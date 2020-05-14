@@ -1,0 +1,25 @@
+# игнорировать каталоги .git и .cache
+.git
+.cache
+*.pyc
+
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+.env*
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+*.log
+
+kafka
+zk*
