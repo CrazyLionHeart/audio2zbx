@@ -181,7 +181,7 @@ def test_devstatus_alert_count_int(input_str, expected):
 @pytest.mark.parametrize("input_str, expected", testdata_devstatus_error)
 def test_devstatus_alert_count_len(input_str, expected):
     result = parse_devstatus_error(input_str)
-    assert len(result['alert_count']) <= 5
+    assert result['alert_count'] <= 99999
 
 
 @pytest.mark.parametrize("input_str, expected", testdata_devstatus_error)
