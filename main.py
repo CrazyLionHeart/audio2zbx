@@ -7,12 +7,12 @@
 """
 
 import logging
-import sys
-import threading
 import re
-from os import getenv, unsetenv
-from datetime import datetime
+import sys
 import telnetlib
+import threading
+from datetime import datetime
+from os import getenv, unsetenv
 
 
 def read_env(var, default=None):
@@ -90,7 +90,7 @@ def parse_devstatus_error(input_str):
         "alert": "off",
         "alert_count": 0,
         "unit_id": 0x100,
-        "date": datetime(1970,1,1,0,0,0)
+        "date": datetime(1970, 1, 1, 0, 0, 0)
     }
 
     input_list = input_str.split('"')[:-1]
@@ -128,23 +128,24 @@ def parse_devstatus_error(input_str):
             if key == 'unit_id':
                 result[key] = int('0x%s' % result[key], 16)
             if key == 'date':
-                result[key] = datetime.strptime(result[key], '%Y/%m/%d %H:%M:%S')
+                result[key] = datetime.strptime(
+                    result[key], '%Y/%m/%d %H:%M:%S')
 
     return result
 
 
 def parse_EventLogGetLogNumber(input_str):
     """[summary]
-    
+
     [description]
-    
+
     Arguments:
         input_str {str} -- [description]
 
         `
         OK event MTX:EventLogGetLogNumber "lognum=6"
         `
-    
+
     Returns:
         int -- [description]
     """
@@ -180,7 +181,7 @@ def parse_EventLogGetLog(input_str):
         "alert": "off",
         "alert_count": 0,
         "unit_id": 0x100,
-        "date": datetime(1970,1,1,0,0,0)
+        "date": datetime(1970, 1, 1, 0, 0, 0)
     }
 
     input_list = input_str.split('"')[:-1]
@@ -218,7 +219,10 @@ def parse_EventLogGetLog(input_str):
             if key == 'unit_id':
                 result[key] = int('0x%s' % result[key], 16)
             if key == 'date':
-                result[key] = datetime.strptime(result[key], '%Y/%m/%d %H:%M:%S')
+                result[key] = datetime.strptime(
+                    result[key],
+                    '%Y/%m/%d %H:%M:%S'
+                )
 
     return result
 
@@ -231,12 +235,12 @@ class Yamaha(object):
 
     def __init__(self, host, port=49280):
         """[summary]
-        
+
         [description]
-        
+
         Arguments:
             host {[type]} -- [description]
-        
+
         Keyword Arguments:
             port {number} -- [description] (default: {49280})
         """
