@@ -14,6 +14,30 @@ import threading
 from datetime import datetime
 from os import getenv, unsetenv
 
+default_result = {
+    "type": "",
+    "message": "",
+    "alert_id": 0x10,
+    "alert": "off",
+    "alert_count": 0,
+    "unit_id": 0x100,
+    "date": datetime(1970, 1, 1, 0, 0, 0)
+}
+
+type_needle = [
+    ["none", ""],
+    ["flt", "FAULT"],
+    ["err", "ERROR"],
+    ["wrn", "WARNING"]
+]
+
+
+def match_replace(s, needle):
+    for item in needle:
+        pattern, replace = item
+        if re.match(pattern, s):
+            return re.sub(pattern, replace, s)
+
 
 def read_env(var, default=None):
     """[summary]
@@ -56,10 +80,38 @@ def config_logging():
     return root_logger
 
 
+def parse_command_answer(answer):
+    result = {}
+    match_keys = []
+    match_result = {}
+    # err/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23
+    regex = r'(?P<type>\w{3})/(?P<message>.{0,32})//\s(?P<alert_id>x\d{2,3})\s(?P<alert>\w{2,3})\s\((?P<alert_count>\d{1,5})\)\sID-(?P<unit_id>\d{3})\s(?P<date>\d{4}/\d{1,2}/\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2})'
+
+    for match in re.finditer(regex, answer):
+        match_keys = match.re.groupindex.keys()
+        match_result = match.groupdict()
+
+    for key in match_keys:
+        result[key] = match_result[key]
+        if key == 'type':
+            result[key] = match_replace(result[key], type_needle)
+        if key == 'alert_count':
+            result[key] = int(result[key])
+        if key == 'alert_id':
+            result[key] = int('0%s' % result[key], 16)
+        if key == 'unit_id':
+            result[key] = int('0x%s' % result[key], 16)
+        if key == 'date':
+            result[key] = datetime.strptime(
+                result[key], '%Y/%m/%d %H:%M:%S')
+    return result
+
+
 def parse_devstatus_error(input_str):
     """Parse command `devstatus error` output
 
-    Функция принимает на вход ответ от команды `devstatus error` и преобразует его в словарь
+    Функция принимает на вход ответ от команды `devstatus error`
+    и преобразует его в словарь
 
     Arguments:
         input_str {str} -- Ответ от устройства:
@@ -70,28 +122,20 @@ def parse_devstatus_error(input_str):
         dict -- parsed result
 
         `
-            {
-                "type": flt = fault, err = error, wrn = warning
-                "message": Maximum 32 letter (ascii character)
-                "alert_id": nnn - 2 or 3 digit hexadecimal
-                "alert": Alert on/off. Persistent alerts turn on when an alert condition occurs and turn off when they are cleared. Single-shot alerts turn on while an alert condition is true
-                "alert_count": sssss
-                "unit_id": xxx - 3 digit hexadecimal
-                "date": datetime(2013, 1, 22, 11, 38, 23)  # 2013/1/22 11:38:23
-            }
+        {
+            "type": flt = fault, err = error, wrn = warning
+            "message": Maximum 32 letter (ascii character)
+            "alert_id": nnn - 2 or 3 digit hexadecimal
+            "alert": Alert on/off. Persistent alerts turn on when an alert condition occurs and turn off when they are cleared. Single-shot alerts turn on while an alert condition is true
+            "alert_count": sssss
+            "unit_id": xxx - 3 digit hexadecimal
+            "date": datetime(2013, 1, 22, 11, 38, 23)  # 2013/1/22 11:38:23
+        }
         `
     """
     logging.debug(input_str)
     cmd = 'devstatus error'
-    result = {
-        "type": "",
-        "message": "",
-        "alert_id": 0x10,
-        "alert": "off",
-        "alert_count": 0,
-        "unit_id": 0x100,
-        "date": datetime(1970, 1, 1, 0, 0, 0)
-    }
+    result = default_result
 
     input_list = input_str.split('"')[:-1]
     command_result = input_list[0].rstrip(cmd).strip()
@@ -100,36 +144,7 @@ def parse_devstatus_error(input_str):
     if output == 'none':
         return result
 
-    match_keys = []
-    match_result = {}
-    # err/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23
-    regex = r'(?P<type>\w{3})/(?P<message>.{0,32})//\s(?P<alert_id>x\d{2,3})\s(?P<alert>\w{2,3})\s\((?P<alert_count>\d{1,5})\)\sID-(?P<unit_id>\d{3})\s(?P<date>\d{4}/\d{1,2}/\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2})'
-
-    for match in re.finditer(regex, output):
-        match_keys = match.re.groupindex.keys()
-        match_result = match.groupdict()
-
-    for key in match_keys:
-        if key in result:
-            result[key] = match_result[key]
-            if key == 'type':
-                if result[key] == 'none':
-                    result[key] = ""
-                elif result[key] == 'flt':
-                    result[key] = "FAULT"
-                elif result[key] == 'err':
-                    result[key] = "ERROR"
-                elif result[key] == 'wrn':
-                    result[key] = "WARNING"
-            if key == 'alert_count':
-                result[key] = int(result[key])
-            if key == 'alert_id':
-                result[key] = int('0%s' % result[key], 16)
-            if key == 'unit_id':
-                result[key] = int('0x%s' % result[key], 16)
-            if key == 'date':
-                result[key] = datetime.strptime(
-                    result[key], '%Y/%m/%d %H:%M:%S')
+    result = parse_command_answer(output)
 
     return result
 
@@ -174,15 +189,7 @@ def parse_EventLogGetLog(input_str):
     """
     logging.debug(input_str)
     cmd = 'event MTX:EventLogGetLog'
-    result = {
-        "type": "",
-        "message": "",
-        "alert_id": 0x10,
-        "alert": "off",
-        "alert_count": 0,
-        "unit_id": 0x100,
-        "date": datetime(1970, 1, 1, 0, 0, 0)
-    }
+    result = default_result
 
     input_list = input_str.split('"')[:-1]
     command_result = input_list[0].rstrip(cmd).strip()
@@ -191,38 +198,7 @@ def parse_EventLogGetLog(input_str):
     if output == 'none':
         return result
 
-    match_keys = []
-    match_result = {}
-    # err/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23
-    regex = r'(?P<type>\w{3})/(?P<message>.{0,32})//\s(?P<alert_id>x\d{2,3})\s(?P<alert>\w{2,3})\s\((?P<alert_count>\d{1,5})\)\sID-(?P<unit_id>\d{3})\s(?P<date>\d{4}/\d{1,2}/\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2})'
-
-    for match in re.finditer(regex, output):
-        match_keys = match.re.groupindex.keys()
-        match_result = match.groupdict()
-
-    for key in match_keys:
-        if key in result:
-            result[key] = match_result[key]
-            if key == 'type':
-                if result[key] == 'none':
-                    result[key] = "None"
-                elif result[key] == 'flt':
-                    result[key] = "FAULT"
-                elif result[key] == 'err':
-                    result[key] = "ERROR"
-                elif result[key] == 'wrn':
-                    result[key] = "WARNING"
-            if key == 'alert_count':
-                result[key] = int(result[key])
-            if key == 'alert_id':
-                result[key] = int('0%s' % result[key], 16)
-            if key == 'unit_id':
-                result[key] = int('0x%s' % result[key], 16)
-            if key == 'date':
-                result[key] = datetime.strptime(
-                    result[key],
-                    '%Y/%m/%d %H:%M:%S'
-                )
+    result = parse_command_answer(output)
 
     return result
 

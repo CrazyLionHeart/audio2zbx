@@ -4,11 +4,37 @@
 
 from datetime import datetime, timedelta
 
-from main import parse_EventLogGetLog, parse_EventLogGetLogNumber, \
-    parse_devstatus_error
+from main import match_replace
+from main import parse_EventLogGetLog
+from main import parse_EventLogGetLogNumber
+from main import parse_devstatus_error
+from main import type_needle
 
 import pytest
 
+testdata_match_replace = [
+    ("none", {
+        "needle": type_needle,
+        "result": ""
+    }
+    ),
+    ("flt", {
+        "needle":
+        type_needle,
+        "result": "FAULT"
+    }
+    ),
+    ("err", {
+        "needle": type_needle,
+        "result": "ERROR"
+    }
+    ),
+    ("wrn", {
+        "needle": type_needle,
+        "result": "WARNING"
+    }
+    ),
+]
 
 testdata_devstatus_error = [
     ('OK devstatus error "none"', {
@@ -27,7 +53,8 @@ testdata_devstatus_error = [
         "alert": "on",
         "alert_count": 1,
         "unit_id": 0x001,
-        "date": datetime.strptime("2013/1/22 11:38:23", '%Y/%m/%d %H:%M:%S')
+        "date": datetime.strptime("2013/1/22 11:38:23",
+                                  '%Y/%m/%d %H:%M:%S')
     }),
     ('OK devstatus error "err/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23"', {
         "type": "ERROR",
@@ -36,7 +63,8 @@ testdata_devstatus_error = [
         "alert": "on",
         "alert_count": 1,
         "unit_id": 0x001,
-        "date": datetime.strptime("2013/1/22 11:38:23", '%Y/%m/%d %H:%M:%S')
+        "date": datetime.strptime("2013/1/22 11:38:23",
+                                  '%Y/%m/%d %H:%M:%S')
     }),
     ('OK devstatus error "wrn/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23"', {
         "type": "WARNING",
@@ -45,7 +73,8 @@ testdata_devstatus_error = [
         "alert": "on",
         "alert_count": 1,
         "unit_id": 0x001,
-        "date": datetime.strptime("2013/1/22 11:38:23", '%Y/%m/%d %H:%M:%S')
+        "date": datetime.strptime("2013/1/22 11:38:23",
+                                  '%Y/%m/%d %H:%M:%S')
     }),
     ('OK devstatus error "err/DCP[0] communication error// x53 on (1) ID-001 2013/1/22 11:38:23"',
         {
@@ -55,7 +84,8 @@ testdata_devstatus_error = [
             "alert": "on",
             "alert_count": 1,
             "unit_id": 0x001,
-            "date": datetime.strptime("2013/1/22 11:38:23", '%Y/%m/%d %H:%M:%S')
+            "date": datetime.strptime("2013/1/22 11:38:23",
+                                      '%Y/%m/%d %H:%M:%S')
         }
      )
 ]
@@ -73,7 +103,8 @@ testdata_EventLogGetLog = [
             "alert": "on",
             "alert_count": 1,
             "unit_id": 0x001,
-            "date": datetime.strptime("2013/1/22 11:38:23", '%Y/%m/%d %H:%M:%S')
+            "date": datetime.strptime("2013/1/22 11:38:23",
+                                      '%Y/%m/%d %H:%M:%S')
         })
 ]
 
@@ -334,3 +365,9 @@ def test_EventLogGetLog_date_dt(input_str, expected):
     result = parse_EventLogGetLog(input_str)
     diff = result['date'] - expected['date']
     assert timedelta(0) == diff
+
+
+@pytest.mark.parametrize("input_str, expected", testdata_match_replace)
+def test_match_replace(input_str, expected):
+    result = match_replace(input_str, expected['needle'])
+    assert result == expected['result']
