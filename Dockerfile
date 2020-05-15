@@ -44,7 +44,7 @@ COPY --from=compile-image /root/.local /root/.local
 RUN apt-get update \
   && apt-get install --no-install-recommends -y \
     dumb-init \
-    ps \
+    procps \
   && chmod +x /app/docker-entrypoint.sh
 
 CMD ["/usr/bin/dumb-init", "/bin/bash", "/app/docker-entrypoint.sh"]
